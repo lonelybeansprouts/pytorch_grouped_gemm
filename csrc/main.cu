@@ -59,14 +59,12 @@ auto getDeviceProps()
 template <typename CutlassType> std::string type2str                  = "Unknown";
 template <>                     std::string type2str<cutlass::half_t> = "Half";
 template <>                     std::string type2str<float>           = "Float";
-template <>                     std::string type2str<double>          = "Double";
 
 // // // // // // // // // // // // // // // // // // // // // // // // 
 
 template <typename CutlassType> auto type2attr                  = at::ScalarType::Float;
 template <>                     auto type2attr<cutlass::half_t> = at::ScalarType::Half;
 template <>                     auto type2attr<float>           = at::ScalarType::Float;
-template <>                     auto type2attr<double>          = at::ScalarType::Double;
 
 // // // // // // // // // // // // // // // // // // // // // // // // 
 
@@ -79,156 +77,91 @@ template <>
 struct KernelConfig<cutlass::half_t, 75>
 {
     // cutlass_tensorop_f16_s1688gemm_f16_256x128_32x2_nn_align8
-    using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
-        cutlass::half_t, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 8,
-        cutlass::half_t, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 8,
-        cutlass::half_t, cutlass::layout::RowMajor,
-        float, 
-        cutlass::arch::OpClassTensorOp, 
-        cutlass::arch::Sm75,
-        cutlass::gemm::GemmShape<256, 128, 32>,
-        cutlass::gemm::GemmShape<64, 64, 32>, 
-        cutlass::gemm::GemmShape<16, 8, 8>,
-        cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
-        cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-        2,
-        cutlass::arch::OpMultiplyAdd
-    >::GemmKernel;
+    using Gemm = cutlass::gemm::device::Gemm<
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            float, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm75,
+            cutlass::gemm::GemmShape<256, 128, 32>,
+            cutlass::gemm::GemmShape<64, 64, 32>, 
+            cutlass::gemm::GemmShape<16, 8, 8>,
+            cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
+            cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+            2
+        >;
 };
 
 template <>
 struct KernelConfig<cutlass::half_t, 80>
 {
     // cutlass_tensorop_f16_s16816gemm_f16_256x128_32x3_nn_align8
-    using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
-        cutlass::half_t, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 8,
-        cutlass::half_t, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 8,
-        cutlass::half_t, cutlass::layout::RowMajor,
-        float, 
-        cutlass::arch::OpClassTensorOp, 
-        cutlass::arch::Sm80,
-        cutlass::gemm::GemmShape<256, 128, 32>,
-        cutlass::gemm::GemmShape<64, 64, 32>, 
-        cutlass::gemm::GemmShape<16, 8, 16>,
-        cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
-        cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-        3,
-        cutlass::arch::OpMultiplyAdd
-    >::GemmKernel;
+    using Gemm = cutlass::gemm::device::Gemm<
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            float, cutlass::arch::OpClassTensorOp, cutlass::arch::Sm80,
+            cutlass::gemm::GemmShape<256, 128, 32>,
+            cutlass::gemm::GemmShape<64, 64, 32>, 
+            cutlass::gemm::GemmShape<16, 8, 8>,
+            cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
+            cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+            2
+        >;
+
 };
 
 // // // // 
+template <>
+struct KernelConfig<float, 75>
+{
+    // cutlass_simt_sgemm_256x128_8x5_nn_align1
+    using Gemm = cutlass::gemm::device::Gemm<
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            float, cutlass::arch::OpClassSimt, cutlass::arch::Sm75,
+            cutlass::gemm::GemmShape<256, 128, 8>,
+            cutlass::gemm::GemmShape<64, 64, 8>, 
+            cutlass::gemm::GemmShape<1, 1, 1>,
+            cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
+            cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+            2
+        >;
+};
 
 template <>
 struct KernelConfig<float, 80>
 {
     // cutlass_simt_sgemm_256x128_8x5_nn_align1
-    using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
-        float, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        float, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        float, cutlass::layout::RowMajor,
-        float, 
-        cutlass::arch::OpClassSimt, 
-        cutlass::arch::Sm80,
-        cutlass::gemm::GemmShape<256, 128, 8>,
-        cutlass::gemm::GemmShape<64, 64, 8>, 
-        cutlass::gemm::GemmShape<1, 1, 1>,
-        cutlass::epilogue::thread::LinearCombination<float, 1, float, float>,
-        cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-        5,
-        cutlass::arch::OpMultiplyAdd
-    >::GemmKernel;
-};
-
-template <>
-struct KernelConfig<float, 50>
-{
-    // cutlass_simt_sgemm_128x128_8x2_nn_align1
-    using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
-        float, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        float, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        float, cutlass::layout::RowMajor,
-        float, 
-        cutlass::arch::OpClassSimt, 
-        cutlass::arch::Sm50,
-        cutlass::gemm::GemmShape<128, 128, 8>,
-        cutlass::gemm::GemmShape<32, 64, 8>, 
-        cutlass::gemm::GemmShape<1, 1, 1>,
-        cutlass::epilogue::thread::LinearCombination<float, 1, float, float>,
-        cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-        2,
-        cutlass::arch::OpMultiplyAdd
-    >::GemmKernel;
-};
-
-// // // // 
-
-template <>
-struct KernelConfig<double, 80>
-{
-    // cutlass_simt_dgemm_128x128_8x3_nn_align1
-    using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
-        double, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        double, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        double, cutlass::layout::RowMajor,
-        double, 
-        cutlass::arch::OpClassSimt, 
-        cutlass::arch::Sm80,
-        cutlass::gemm::GemmShape<128, 128, 8>,
-        cutlass::gemm::GemmShape<32, 64, 8>, 
-        cutlass::gemm::GemmShape<1, 1, 1>,
-        cutlass::epilogue::thread::LinearCombination<double, 1, double, double>,
-        cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-        3,
-        cutlass::arch::OpMultiplyAdd
-    >::GemmKernel;
-};
-
-
-template <>
-struct KernelConfig<double, 50>
-{
-    // cutlass_simt_dgemm_128x128_8x2_nn_align1
-    using GemmKernel = typename cutlass::gemm::kernel::DefaultGemmGrouped<
-        double, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        double, cutlass::layout::RowMajor, cutlass::ComplexTransform::kNone, 1,
-        double, cutlass::layout::RowMajor,
-        double, 
-        cutlass::arch::OpClassSimt, 
-        cutlass::arch::Sm50,
-        cutlass::gemm::GemmShape<128, 128, 8>,
-        cutlass::gemm::GemmShape<32, 64, 8>, 
-        cutlass::gemm::GemmShape<1, 1, 1>,
-        cutlass::epilogue::thread::LinearCombination<double, 1, double, double>,
-        cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
-        2,
-        cutlass::arch::OpMultiplyAdd
-    >::GemmKernel;
+    using Gemm = cutlass::gemm::device::Gemm<
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            cutlass::half_t, cutlass::layout::RowMajor,
+            float, cutlass::arch::OpClassSimt, cutlass::arch::Sm80,
+            cutlass::gemm::GemmShape<256, 128, 8>,
+            cutlass::gemm::GemmShape<64, 64, 8>, 
+            cutlass::gemm::GemmShape<1, 1, 1>,
+            cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
+            cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
+            2
+        >;
 };
 
 // // // // // // // // // // // // // // // // // // // // // // // // 
 
-using ListTensor = std::vector<torch::Tensor>;
-
-
 /*
-    Perform Grouped Matrix Multiplication (in a single cuda kernel launch)
-    A: list[Tensor]
-    B: list[Tensor]
-    C: list[Tensor]
-    D = [ alpha * A[i] x B[i] + beta * C for i in range(num_matrices) ]
+    Perform Matrix Multiplication
+    D = [ alpha * A[i] x B[i] + beta * C]
 */
-template <typename GemmKernel>
-void GroupedGEMM_kernel(const ListTensor& matrices_A,
-                        const ListTensor& matrices_B,
-                        const ListTensor& matrices_C,
-                        const ListTensor& matrices_D,
-                        float alpha = 1.0, 
-                        float beta = 0.0,
-                        // kwargs
-                        int threadblock_count = 0
-                    )
-{
+template <typename Gemm>
+void GEMM_kernel(
+        const torch::Tensor& matrix_A,
+        const torch::Tensor& matrix_B,
+        const torch::Tensor& matrix_C,
+        const torch::Tensor& matrix_D,
+        float alpha = 1.0, 
+        float beta = 0.0
+){
     /* some types */
     using ElementA = typename GemmKernel::ElementA;
     using ElementB = typename GemmKernel::ElementB;
@@ -236,156 +169,92 @@ void GroupedGEMM_kernel(const ListTensor& matrices_A,
     using LayoutA  = typename GemmKernel::LayoutA;
     using LayoutB  = typename GemmKernel::LayoutB;
     using LayoutC  = typename GemmKernel::LayoutC;
-    using GemmGrouped = cutlass::gemm::device::GemmGrouped<GemmKernel>;
     using EpilogueOutputOp = typename GemmKernel::Epilogue::OutputOp;
-    using ElementCompute = typename EpilogueOutputOp::ElementCompute;
+    using ElementComputeEpilogue = typename EpilogueOutputOp::ElementCompute;
     using MatrixCoord = typename LayoutC::TensorCoord;
 
+    CHECK_INPUT(matrix_A);
+    CHECK_INPUT(matrix_B);
+    CHECK_INPUT(matrix_C);
+    CHECK_INPUT(matrix_D);
+    TORCH_CHECK(matrix_A.scalar_type() == type2attr<ElementA>, "input a wrong data type for matrix A \n");
+    TORCH_CHECK(matrix_B.scalar_type() == type2attr<ElementB>, "input a wrong data type for matrix B \n");
+    TORCH_CHECK(matrix_C.scalar_type() == type2attr<ElementC>, "input a wrong data type for matrix C \n");
+    TORCH_CHECK(matrix_D.scalar_type() == type2attr<ElementC>, "input a wrong data type for matrix D \n");
 
-    /* preapre variables */
-    auto num_matrices = matrices_A.size();
-
-    /* check */
-    // assert list length
-    TORCH_CHECK(matrices_A.size() == matrices_B.size() && \
-                matrices_B.size() == matrices_C.size() && \
-                matrices_C.size() == matrices_D.size(), "num of matrices mismatches \n");
+    auto m  = matrix_A.size(0);
+    auto k  = matrix_A.size(1);
+    auto k2 = matrix_B.size(0);
+    auto n  = matrix_B.size(1);
     
-    /* prepare all problems' size */
-    std::vector<cutlass::gemm::GemmCoord> all_problems(num_matrices);
-    cutlass::DeviceAllocation<cutlass::gemm::GemmCoord> all_problems_device;
-    for (auto i = 0; i < num_matrices; ++i)
+    auto mC = matrix_C.size(0);
+    auto nC = matrix_C.size(1);
+
+    auto mD = matrix_D.size(0);
+    auto nD = matrix_D.size(1);
+
+    // check the hidden dimension - k
+    if (k != k2)
     {
-        auto& matrix_A = matrices_A[i];
-        auto& matrix_B = matrices_B[i];
-        auto& matrix_C = matrices_C[i];
-        auto& matrix_D = matrices_D[i];
-
-        CHECK_INPUT(matrix_A);
-        CHECK_INPUT(matrix_B);
-        CHECK_INPUT(matrix_C);
-        CHECK_INPUT(matrix_D);
-        TORCH_CHECK(matrix_A.scalar_type() == type2attr<ElementA>, "input a wrong data type for matrix A \n");
-        TORCH_CHECK(matrix_B.scalar_type() == type2attr<ElementB>, "input a wrong data type for matrix B \n");
-        TORCH_CHECK(matrix_C.scalar_type() == type2attr<ElementC>, "input a wrong data type for matrix C \n");
-        TORCH_CHECK(matrix_D.scalar_type() == type2attr<ElementC>, "input a wrong data type for matrix D \n");
-
-        auto m  = matrix_A.size(0);
-        auto k  = matrix_A.size(1);
-        auto k2 = matrix_B.size(0);
-        auto n  = matrix_B.size(1);
-        
-        auto mC = matrix_C.size(0);
-        auto nC = matrix_C.size(1);
-
-        auto mD = matrix_D.size(0);
-        auto nD = matrix_D.size(1);
-
-        // check the hidden dimension - k
-        if (k != k2)
-        {
-            std::stringstream s;
-            s << "cannot apply matrix multiplication between two shapes: A=(" << m << ", " << k << ") and B=(" << k2 << ", " << n << ") \n";
-            TORCH_CHECK(false, s.str());
-        }
-
-        // check shape match - A * B, C
-        if (m != mC || n != nC)
-        {
-            std::stringstream s;
-            s << "matrix A * B cannot add with matrix C between two shapes: A*B=(" << m << ", " << n << ") and C=(" << mC << ", " << nC << ") \n";
-            TORCH_CHECK(false, s.str());
-        }
-
-        // check shape match - A * B, D
-        if (m != mD || n != nD)
-        {
-            std::stringstream s;
-            s << "matrix A * B cannot add with matrix D between two shapes: A*B=(" << m << ", " << n << ") and D=(" << mD << ", " << nD << ") \n";
-            TORCH_CHECK(false, s.str());
-        }
-
-        all_problems[i] = cutlass::gemm::GemmCoord(m, n, k);
+        std::stringstream s; 
+        s << "cannot apply matrix multiplication between two shapes: A=(" << m << ", " << k << ") and B=(" << k2 << ", " << n << ") \n";
+        TORCH_CHECK(false, s.str());
     }
-    all_problems_device.reset(num_matrices);
-    all_problems_device.copy_from_host(all_problems.data());
 
-
-    /* prepare leading dimension */
-    std::vector<int64_t> lda_host(num_matrices);
-    std::vector<int64_t> ldb_host(num_matrices);
-    std::vector<int64_t> ldc_host(num_matrices);
-    for (auto i = 0; i < num_matrices; ++i)
+    // check shape match - A * B, C
+    if (m != mC || n != nC)
     {
-        auto& problem = all_problems[i];
-        
-        lda_host[i] = LayoutA::packed({problem.m(), problem.k()}).stride(0);
-        ldb_host[i] = LayoutB::packed({problem.k(), problem.n()}).stride(0);
-        ldc_host[i] = LayoutC::packed({problem.m(), problem.n()}).stride(0);
+        std::stringstream s;
+        s << "matrix A * B cannot add with matrix C between two shapes: A*B=(" << m << ", " << n << ") and C=(" << mC << ", " << nC << ") \n";
+        TORCH_CHECK(false, s.str());
     }
-    cutlass::DeviceAllocation<int64_t> lda; lda.reset(num_matrices); lda.copy_from_host(lda_host.data());
-    cutlass::DeviceAllocation<int64_t> ldb; ldb.reset(num_matrices); ldb.copy_from_host(ldb_host.data());
-    cutlass::DeviceAllocation<int64_t> ldc; ldc.reset(num_matrices); ldc.copy_from_host(ldc_host.data());
-    
 
-    /* prepare pointers */
-    std::vector<ElementA *> ptr_A_host(num_matrices);
-    std::vector<ElementB *> ptr_B_host(num_matrices);
-    std::vector<ElementC *> ptr_C_host(num_matrices);
-    std::vector<ElementC *> ptr_D_host(num_matrices);
-    using TorchTypeA = typename std::conditional<std::is_same<ElementA, cutlass::half_t>::value, at::Half, ElementA>::type;
-    using TorchTypeB = typename std::conditional<std::is_same<ElementB, cutlass::half_t>::value, at::Half, ElementB>::type;
-    using TorchTypeC = typename std::conditional<std::is_same<ElementC, cutlass::half_t>::value, at::Half, ElementC>::type;
-    for (auto i = 0; i < num_matrices; ++i)
+    // check shape match - A * B, D
+    if (m != mD || n != nD)
     {
-        ptr_A_host[i] = reinterpret_cast<ElementA *>(matrices_A[i].data_ptr<TorchTypeA>());
-        ptr_B_host[i] = reinterpret_cast<ElementB *>(matrices_B[i].data_ptr<TorchTypeB>());
-        ptr_C_host[i] = reinterpret_cast<ElementC *>(matrices_C[i].data_ptr<TorchTypeC>());
-        ptr_D_host[i] = reinterpret_cast<ElementC *>(matrices_D[i].data_ptr<TorchTypeC>());
+        std::stringstream s;
+        s << "matrix A * B cannot add with matrix D between two shapes: A*B=(" << m << ", " << n << ") and D=(" << mD << ", " << nD << ") \n";
+        TORCH_CHECK(false, s.str());
     }
-    cutlass::DeviceAllocation<ElementA *> ptr_A; ptr_A.reset(num_matrices); ptr_A.copy_from_host(ptr_A_host.data());
-    cutlass::DeviceAllocation<ElementB *> ptr_B; ptr_B.reset(num_matrices); ptr_B.copy_from_host(ptr_B_host.data());
-    cutlass::DeviceAllocation<ElementC *> ptr_C; ptr_C.reset(num_matrices); ptr_C.copy_from_host(ptr_C_host.data());
-    cutlass::DeviceAllocation<ElementC *> ptr_D; ptr_D.reset(num_matrices); ptr_D.copy_from_host(ptr_D_host.data());
-    
 
-    /* configurate the GEMM args */
-    typename EpilogueOutputOp::Params epilogue_op(alpha, beta);
-    typename GemmGrouped::Arguments args(
-      all_problems_device.get(),
-      num_matrices,
-      threadblock_count,
-      epilogue_op,
-      ptr_A.get(),
-      ptr_B.get(),
-      ptr_C.get(),
-      ptr_D.get(),
-      lda.get(),
-      ldb.get(),
-      ldc.get(),
-      ldc.get()
-    );
+    // Split K dimension into 1 partitions
+    int split_k_slices = 1;
 
+    cutlass::gemm::GemmCoord problem_size(m, n, k);
 
-    /* start to launch the GEMM kernel */
-    GemmGrouped gemm;
-    cutlass::Status status;
-    status = gemm.initialize(args);
-    TORCH_CHECK(status == cutlass::Status::kSuccess, "GroupedGEMM kernel initialization: failed \n");
-    status = gemm.run();
-    TORCH_CHECK(status == cutlass::Status::kSuccess, "GroupedGEMM kernel run: failed \n");
+    // Create a tuple of gemm kernel arguments. This is later passed as arguments to launch
+    // instantiated CUTLASS kernel
+    typename Gemm::Arguments arguments{
+                                    {m, n, k}, 
+                                    {reinterpret_cast<ElementA*>(matrix_A.data()), k},  
+                                    {reinterpret_cast<ElementB*>(matrix_B.data()), n},
+                                    {reinterpret_cast<ElementC*>(matrix_C.data()), n},
+                                    {reinterpret_cast<ElementC*>(matrix_D.data()), n},
+                                    {alpha, beta},
+                                    split_k_slices
+                                };     
 
+    // Using the arguments, query for extra workspace required for matrix multiplication computation
+    size_t workspace_size = Gemm::get_workspace_size(arguments);
+
+    // Allocate workspace memory
+    cutlass::device_memory::allocation<uint8_t> workspace(workspace_size);
+
+    // Instantiate CUTLASS kernel depending on templates
+    Gemm gemm_op;
+
+    // Check the problem size is supported or not 
+    cutlass::Status status = gemm_op.can_implement(arguments);
+    CUTLASS_CHECK(status);
+
+    // Launch initialized CUTLASS kernel
+    status = gemm_op(arguments, workspace.get());
+    CUTLASS_CHECK(status);
+
+    cudaDeviceSynchronize();
 }
 
 // // // // // // // // // // // // // // // // // // // // // // // // 
-
-
-#define LAUNCH_CODES { \
-    int smem_size = int(sizeof(typename GemmKernel::SharedStorage)); \
-    int occupancy = std::min(2, int(props.sharedMemPerMultiprocessor / smem_size)); \
-    int threadblock_count = props.multiProcessorCount * occupancy; \
-    TORCH_CHECK(threadblock_count > 0, "lack hardware resources to launch cuda kernel \n"); \
-    GroupedGEMM_kernel<GemmKernel>(matrices_A, matrices_B, matrices_C, matrices_D, alpha, beta, threadblock_count); }
 
 
 #define HANDLE_OTHER_TYPES { \
@@ -405,21 +274,20 @@ inline bool is_available(int arch, int target)
     {
         if (target == 80 && COMPILE_CC >= 80) return true;
         if (target == 75 && COMPILE_CC >= 75) return true;
-        if (target == 50 && COMPILE_CC >= 50) return true;
     }
     return false;
 }
 
-void GroupedGEMM(const ListTensor& matrices_A,
-                 const ListTensor& matrices_B,
-                 const ListTensor& matrices_C,
-                 const ListTensor& matrices_D,
-                 float alpha = 1.0, 
-                 float beta = 0.0
-                )
-{
+void GEMM(
+        const torch::Tensor& matrix_A,
+        const torch::Tensor& matrix_B,
+        const torch::Tensor& matrix_C,
+        const torch::Tensor& matrix_D,
+        float alpha = 1.0, 
+        float beta = 0.0
+    ){
     // NOTE: in/out data types must be the same
-    auto torch_type = matrices_A[0].scalar_type();
+    auto torch_type = matrix_A.scalar_type();
     auto props = getDeviceProps();
 
     // check cuda / arch
@@ -429,52 +297,39 @@ void GroupedGEMM(const ListTensor& matrices_A,
     if (torch_type == at::ScalarType::Half) {
         using CutlassType = cutlass::half_t;
         if (is_available(arch, 80)) {
-            using GemmKernel = KernelConfig<CutlassType, 80>::GemmKernel;
-            LAUNCH_CODES
+            using Gemm = KernelConfig<CutlassType, 80>::Gemm;
+            GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
         } else if (is_available(arch, 75)) {
-            using GemmKernel = KernelConfig<CutlassType, 75>::GemmKernel;
-            LAUNCH_CODES
+            using Gemm = KernelConfig<CutlassType, 75>::Gemm;
+            GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
         }
         else HANDLE_OTHER_TYPES
     } else if (torch_type == at::ScalarType::Float) {
         using CutlassType = float;
         if (is_available(arch, 80)) {
-            using GemmKernel = KernelConfig<CutlassType, 80>::GemmKernel;
-            LAUNCH_CODES
+            using Gemm = KernelConfig<CutlassType, 80>::Gemm;
+            GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
         } else if (is_available(arch, 50)) {
-            using GemmKernel = KernelConfig<CutlassType, 50>::GemmKernel;
-            LAUNCH_CODES
-        }
-        else HANDLE_OTHER_TYPES
-    } else if (torch_type == at::ScalarType::Double) {
-        using CutlassType = double;
-        if (is_available(arch, 80)) {
-            using GemmKernel = KernelConfig<CutlassType, 80>::GemmKernel;
-            LAUNCH_CODES
-        } else if (is_available(arch, 50)) {
-            using GemmKernel = KernelConfig<CutlassType, 50>::GemmKernel;
-            LAUNCH_CODES
+            using Gemm = KernelConfig<CutlassType, 50>::Gemm;
+            GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
         }
         else HANDLE_OTHER_TYPES
     } else {
         TORCH_CHECK(false, "not implemented for this data type \n");
     }
-    
 }
 
 
-// // // // // // // // // // // // // // // // // // // // // // // // 
-
-
+// // // // // // // // // // // // // // // // // // // // // // // //
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
 {
     // pytorch uses row-major
-    m.def("GroupedGEMM", &GroupedGEMM, 
-          "GroupedGEMM (CUDA)", 
-          py::arg("matrices_A"), 
-          py::arg("matrices_B"), 
-          py::arg("matrices_C"), 
-          py::arg("matrices_D"),
+    m.def("GEMM", &GEMM,
+          "GEMM (CUDA)", 
+          py::arg("matrix_A"), 
+          py::arg("matrix_B"), 
+          py::arg("matrix_C"), 
+          py::arg("matrix_D"),
           py::arg("alpha"),
           py::arg("beta")
         );
