@@ -95,7 +95,6 @@ struct KernelConfig { using GemmKernel = void; };
 template <>
 struct KernelConfig<cutlass::half_t, 75>
 {
-    // cutlass_tensorop_f16_s1688gemm_f16_256x128_32x2_nn_align8
     using Gemm = cutlass::gemm::device::Gemm<
             cutlass::half_t, cutlass::layout::RowMajor,
             cutlass::half_t, cutlass::layout::RowMajor,
@@ -113,7 +112,6 @@ struct KernelConfig<cutlass::half_t, 75>
 template <>
 struct KernelConfig<cutlass::half_t, 80>
 {
-    // cutlass_tensorop_f16_s16816gemm_f16_256x128_32x3_nn_align8
     using Gemm = cutlass::gemm::device::Gemm<
             cutlass::half_t, cutlass::layout::RowMajor,
             cutlass::half_t, cutlass::layout::RowMajor,
@@ -129,7 +127,7 @@ struct KernelConfig<cutlass::half_t, 80>
 
 };
 
-// // // // 
+// // // // // // // // // // // //
 template <>
 struct KernelConfig<float, 50>
 {
@@ -290,10 +288,7 @@ void GEMM_kernel(
 inline bool is_available(int arch, int target)
 {
     if (arch >= target)
-    {
-        if (target == 80 && COMPILE_CC >= 80) return true;
-        if (target == 75 && COMPILE_CC >= 75) return true;
-    }
+        return true;
     return false;
 }
 
@@ -330,11 +325,11 @@ void GEMM(
             using Gemm = KernelConfig<CutlassType, 80>::Gemm;
             GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
         } 
-        // else if (is_available(arch, 75)) {
-        //     using Gemm = KernelConfig<CutlassType, 75>::Gemm;
-        //     GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
-        // }
-        // else HANDLE_OTHER_TYPES
+        else if (is_available(arch, 50)) {
+            using Gemm = KernelConfig<CutlassType, 50>::Gemm;
+            GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
+        }
+        else HANDLE_OTHER_TYPES
     } else {
         TORCH_CHECK(false, "not implemented for this data type \n");
     }
