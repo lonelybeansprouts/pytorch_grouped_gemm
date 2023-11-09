@@ -12,9 +12,7 @@
 
 #include "cutlass/cutlass.h"
 #include "cutlass/gemm/gemm.h"
-#include "cutlass/gemm/kernel/gemm_grouped.h"
-#include "cutlass/gemm/kernel/default_gemm_grouped.h"
-#include "cutlass/gemm/device/gemm_grouped.h"
+#include "cutlass/gemm/device/gemm.h"
 #include "cutlass/gemm/device/gemm_universal.h"
 
 #include "cutlass/util/command_line.h"
@@ -36,6 +34,27 @@ namespace py = pybind11;
 #define CHECK_CONTIGUOUS(x) TORCH_CHECK(x.is_contiguous(), #x " must be contiguous \n")
 #define CHECK_CUDA(x) TORCH_CHECK(x.is_cuda(), #x " must be a CUDA tensor \n")
 #define CHECK_INPUT(x) CHECK_CUDA(x); CHECK_CONTIGUOUS(x)
+#include "cuda_runtime.h"
+
+#define CUTLASS_CHECK(status)                                                                    \
+  {                                                                                              \
+    cutlass::Status error = status;                                                              \
+    if (error != cutlass::Status::kSuccess) {                                                    \
+      std::cerr << "Got cutlass error: " << cutlassGetStatusString(error) << " at: " << __LINE__ \
+                << std::endl;                                                                    \
+      exit(EXIT_FAILURE);                                                                        \
+    }                                                                                            \
+  }
+
+#define CUDA_CHECK(status)                                              \
+  {                                                                     \
+    cudaError_t error = status;                                         \
+    if (error != cudaSuccess) {                                         \
+      std::cerr << "Got bad cuda status: " << cudaGetErrorString(error) \
+                << " at line: " << __LINE__ << std::endl;               \
+      exit(EXIT_FAILURE);                                               \
+    }                                                                   \
+  }
 
 // // // // // // // // // // // // // // // // // // // // // // // // 
 
@@ -112,18 +131,18 @@ struct KernelConfig<cutlass::half_t, 80>
 
 // // // // 
 template <>
-struct KernelConfig<float, 75>
+struct KernelConfig<float, 50>
 {
     // cutlass_simt_sgemm_256x128_8x5_nn_align1
     using Gemm = cutlass::gemm::device::Gemm<
-            cutlass::half_t, cutlass::layout::RowMajor,
-            cutlass::half_t, cutlass::layout::RowMajor,
-            cutlass::half_t, cutlass::layout::RowMajor,
-            float, cutlass::arch::OpClassSimt, cutlass::arch::Sm75,
+            float, cutlass::layout::RowMajor,
+            float, cutlass::layout::RowMajor,
+            float, cutlass::layout::RowMajor,
+            float, cutlass::arch::OpClassSimt, cutlass::arch::Sm50,
             cutlass::gemm::GemmShape<256, 128, 8>,
             cutlass::gemm::GemmShape<64, 64, 8>, 
             cutlass::gemm::GemmShape<1, 1, 1>,
-            cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
+            cutlass::epilogue::thread::LinearCombination<float, 1, float, float>,
             cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
             2
         >;
@@ -134,14 +153,14 @@ struct KernelConfig<float, 80>
 {
     // cutlass_simt_sgemm_256x128_8x5_nn_align1
     using Gemm = cutlass::gemm::device::Gemm<
-            cutlass::half_t, cutlass::layout::RowMajor,
-            cutlass::half_t, cutlass::layout::RowMajor,
-            cutlass::half_t, cutlass::layout::RowMajor,
+            float, cutlass::layout::RowMajor,
+            float, cutlass::layout::RowMajor,
+            float, cutlass::layout::RowMajor,
             float, cutlass::arch::OpClassSimt, cutlass::arch::Sm80,
             cutlass::gemm::GemmShape<256, 128, 8>,
             cutlass::gemm::GemmShape<64, 64, 8>, 
             cutlass::gemm::GemmShape<1, 1, 1>,
-            cutlass::epilogue::thread::LinearCombination<cutlass::half_t, 8, float, float>,
+            cutlass::epilogue::thread::LinearCombination<float, 1, float, float>,
             cutlass::gemm::threadblock::GemmIdentityThreadblockSwizzle<8>,
             2
         >;
@@ -163,13 +182,13 @@ void GEMM_kernel(
         float beta = 0.0
 ){
     /* some types */
-    using ElementA = typename GemmKernel::ElementA;
-    using ElementB = typename GemmKernel::ElementB;
-    using ElementC = typename GemmKernel::ElementC;
-    using LayoutA  = typename GemmKernel::LayoutA;
-    using LayoutB  = typename GemmKernel::LayoutB;
-    using LayoutC  = typename GemmKernel::LayoutC;
-    using EpilogueOutputOp = typename GemmKernel::Epilogue::OutputOp;
+    using ElementA = typename Gemm::ElementA;
+    using ElementB = typename Gemm::ElementB;
+    using ElementC = typename Gemm::ElementC;
+    using LayoutA  = typename Gemm::LayoutA;
+    using LayoutB  = typename Gemm::LayoutB;
+    using LayoutC  = typename Gemm::LayoutC;
+    using EpilogueOutputOp = typename Gemm::EpilogueOutputOp;
     using ElementComputeEpilogue = typename EpilogueOutputOp::ElementCompute;
     using MatrixCoord = typename LayoutC::TensorCoord;
 
@@ -225,11 +244,11 @@ void GEMM_kernel(
     // Create a tuple of gemm kernel arguments. This is later passed as arguments to launch
     // instantiated CUTLASS kernel
     typename Gemm::Arguments arguments{
-                                    {m, n, k}, 
-                                    {reinterpret_cast<ElementA*>(matrix_A.data()), k},  
-                                    {reinterpret_cast<ElementB*>(matrix_B.data()), n},
-                                    {reinterpret_cast<ElementC*>(matrix_C.data()), n},
-                                    {reinterpret_cast<ElementC*>(matrix_D.data()), n},
+                                    {static_cast<int>(m), static_cast<int>(n), static_cast<int>(k)}, 
+                                    {reinterpret_cast<ElementA*>(matrix_A.data_ptr()), k},  
+                                    {reinterpret_cast<ElementB*>(matrix_B.data_ptr()), n},
+                                    {reinterpret_cast<ElementC*>(matrix_C.data_ptr()), n},
+                                    {reinterpret_cast<ElementC*>(matrix_D.data_ptr()), n},
                                     {alpha, beta},
                                     split_k_slices
                                 };     
@@ -299,7 +318,8 @@ void GEMM(
         if (is_available(arch, 80)) {
             using Gemm = KernelConfig<CutlassType, 80>::Gemm;
             GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
-        } else if (is_available(arch, 75)) {
+        } 
+        else if (is_available(arch, 75)) {
             using Gemm = KernelConfig<CutlassType, 75>::Gemm;
             GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
         }
@@ -309,11 +329,12 @@ void GEMM(
         if (is_available(arch, 80)) {
             using Gemm = KernelConfig<CutlassType, 80>::Gemm;
             GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
-        } else if (is_available(arch, 50)) {
-            using Gemm = KernelConfig<CutlassType, 50>::Gemm;
-            GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
-        }
-        else HANDLE_OTHER_TYPES
+        } 
+        // else if (is_available(arch, 75)) {
+        //     using Gemm = KernelConfig<CutlassType, 75>::Gemm;
+        //     GEMM_kernel<Gemm>(matrix_A, matrix_B, matrix_C, matrix_D, alpha, beta);
+        // }
+        // else HANDLE_OTHER_TYPES
     } else {
         TORCH_CHECK(false, "not implemented for this data type \n");
     }
